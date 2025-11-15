@@ -14,12 +14,12 @@ import matplotlib.pyplot as plt
 # PAGE SETUP
 # --------------------------------------------------------------------
 st.set_page_config(
-    page_title="Santander Customer Satisfaction – Advanced Dashboard",
-    page_icon="📊",
+    page_title="Santander Customer Satisfaction Dashboard",
+    page_icon="",
     layout="wide"
 )
 
-st.title("📊 Santander Customer Satisfaction – Advanced Analytics Dashboard")
+st.title("Santander Customer Satisfaction Analytics Dashboard")
 st.markdown("---")
 
 # --------------------------------------------------------------------
@@ -66,7 +66,7 @@ with col4:
 # --------------------------------------------------------------------
 # TARGET DISTRIBUTION
 # --------------------------------------------------------------------
-st.header("🎯 Target Distribution")
+st.header("Target Distribution")
 st.markdown("---")
 target_counts = df['TARGET'].value_counts()
 
@@ -92,7 +92,7 @@ with col2:
 # --------------------------------------------------------------------
 # CORRELATION HEATMAP (TOP FEATURES)
 # --------------------------------------------------------------------
-st.header("🔗 Correlation Heatmap (Top 25 Highest-Variance Features)")
+st.header("Correlation Heatmap (Top 25 Highest-Variance Features)")
 st.markdown("---")
 
 # selecting top 25 most variable columns
@@ -108,7 +108,7 @@ plt.clf()
 # --------------------------------------------------------------------
 # MUTUAL INFORMATION (Feature Importance)
 # --------------------------------------------------------------------
-st.header("📈 Feature Importance via Mutual Information")
+st.header("Feature Importance via Mutual Information")
 st.markdown("---")
 
 X = df.drop("TARGET", axis=1)
@@ -133,7 +133,7 @@ st.plotly_chart(fig, use_container_width=True)
 # --------------------------------------------------------------------
 # PCA VISUALIZATION
 # --------------------------------------------------------------------
-st.header("🌀 PCA Dimensionality Reduction (2D Projection)")
+st.header("PCA Dimensionality Reduction (2D Projection)")
 st.markdown("---")
 
 @st.cache_data(show_spinner=True)
@@ -165,7 +165,7 @@ st.plotly_chart(fig, use_container_width=True)
 # --------------------------------------------------------------------
 # K-MEANS CLUSTERING
 # --------------------------------------------------------------------
-st.header("🔍 K-Means Clustering on PCA Components")
+st.header("K-Means Clustering on PCA Components")
 st.markdown("---")
 
 k = st.slider("Choose number of clusters:", 2, 10, 3)
@@ -203,7 +203,7 @@ st.plotly_chart(fig, use_container_width=True)
 # --------------------------------------------------------------------
 # FEATURE DISTRIBUTIONS
 # --------------------------------------------------------------------
-st.header("📉 Feature Distribution Explorer")
+st.header("Feature Distribution Explorer")
 st.markdown("---")
 
 feature = st.selectbox("Select a feature to visualize:", df.columns)
@@ -220,7 +220,7 @@ st.plotly_chart(fig, use_container_width=True)
 # --------------------------------------------------------------------
 # DATA PREVIEW
 # --------------------------------------------------------------------
-st.header("👀 Raw Data Preview")
+st.header("Raw Data Preview")
 st.dataframe(df.head(20), use_container_width=True)
 
 # --------------------------------------------------------------------
@@ -228,6 +228,6 @@ st.dataframe(df.head(20), use_container_width=True)
 # --------------------------------------------------------------------
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color:gray;'>Advanced Santander Dashboard — Streamlit</div>",
+    "<div style='text-align:center; color:gray;'>Advanced Santander Dashboard — By Sailesh Kc</div>",
     unsafe_allow_html=True
 )
