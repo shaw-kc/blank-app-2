@@ -1,56 +1,71 @@
-"""
-Simple Santander Customer Satisfaction Dashboard
-A minimal version to get started and verify deployment works
-"""
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Page config
+# ----------------------------------------------------------
+# Page Setup
+# ----------------------------------------------------------
 st.set_page_config(
     page_title="Santander Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# Title
 st.title("📊 Santander Customer Satisfaction Dashboard")
 st.markdown("---")
 
-# Sidebar
-st.sidebar.header("📁 Upload Data")
-uploaded_file = st.sidebar.file_uploader("Upload train.csv", type=['csv'])
+# ----------------------------------------------------------
+# Google Drive CSV Loader
+# ----------------------------------------------------------
+st.sidebar.header("📁 Data Source")
 
-if uploaded_file is None:
-    st.info("👈 Please upload your train.csv file to begin")
-    st.markdown("""
-    ### Welcome! 
-    
-    This dashboard analyzes the Santander Customer Satisfaction dataset.
-    
-    **To get started:**
-    1. Click "Browse files" in the sidebar
-    2. Select your train.csv file
-    3. Explore the visualizations!
-    """)
+drive_url = st.sidebar.text_input(
+    "Paste Google Drive CSV Link (Share → Copy link)",
+    placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+)
+
+def convert_drive_url(url):
+    """Convert Google Drive share link to direct-download CSV link."""
+    if "drive.google.com" not in url:
+        return None
+    try:
+        file_id = url.split("/d/")[1].split("/")[0]
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+    except:
+        return None
+
+@st.cache_data
+def load_data(link):
+    return pd.read_csv(link)
+
+# ----------------------------------------------------------
+# Load Data
+# ----------------------------------------------------------
+if not drive_url:
+    st.info("👈 Enter your Google Drive CSV link to load the dataset.")
     st.stop()
 
-# Load data
-@st.cache_data
-def load_data(file):
-    df = pd.read_csv(file)
-    return df
+converted_link = convert_drive_url(drive_url)
 
-with st.spinner("Loading data..."):
-    df = load_data(uploaded_file)
+if converted_link is None:
+    st.error("❌ Invalid Google Drive link format. Make sure it contains `/d/FILE_ID/`")
+    st.stop()
 
-st.success(f"✅ Data loaded! {len(df):,} rows × {len(df.columns):,} columns")
+try:
+    with st.spinner("Loading data from Google Drive..."):
+        df = load_data(converted_link)
+    st.success(f"✅ Loaded {len(df):,} rows × {len(df.columns):,} columns")
+except Exception as e:
+    st.error("❌ Failed to load CSV file. Check permissions or link.")
+    st.exception(e)
+    st.stop()
 
-# Basic stats
-st.markdown("---")
+# ----------------------------------------------------------
+# BASIC METRICS
+# ----------------------------------------------------------
 st.header("📊 Dataset Overview")
+st.markdown("---")
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -66,140 +81,62 @@ with col3:
     st.metric("Dissatisfied", f"{dissatisfied:,}")
 
 with col4:
-    dissatisfaction_rate = df['TARGET'].mean() * 100
-    st.metric("Dissatisfaction Rate", f"{dissatisfaction_rate:.2f}%")
+    st.metric("Dissatisfaction Rate", f"{df['TARGET'].mean() * 100:.2f}%")
 
-# Target Distribution
-st.markdown("---")
+# ----------------------------------------------------------
+# TARGET DISTRIBUTION
+# ----------------------------------------------------------
 st.header("🎯 Customer Satisfaction Distribution")
+st.markdown("---")
+
+target_counts = df['TARGET'].value_counts()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # Bar chart
-    target_counts = df['TARGET'].value_counts()
-    fig = go.Figure(data=[
-        go.Bar(
-            x=['Satisfied (0)', 'Dissatisfied (1)'],
-            y=target_counts.values,
-            marker_color=['#1f77b4', '#ff7f0e'],
-            text=[f'{v:,}' for v in target_counts.values],
-            textposition='outside'
-        )
-    ])
-    fig.update_layout(
-        title='Count by Satisfaction',
-        yaxis_title='Number of Customers',
-        height=400
+    fig = px.bar(
+        target_counts,
+        x=target_counts.index,
+        y=target_counts.values,
+        labels={'x': 'Target', 'y': 'Count'},
+        title="Count by Satisfaction"
     )
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    # Pie chart
-    fig = go.Figure(data=[
-        go.Pie(
-            labels=['Satisfied', 'Dissatisfied'],
-            values=target_counts.values,
-            marker_colors=['#1f77b4', '#ff7f0e'],
-            hole=0.4
-        )
-    ])
-    fig.update_layout(
-        title='Satisfaction Distribution',
-        height=400
+    fig = px.pie(
+        values=target_counts.values,
+        names=["Satisfied (0)", "Dissatisfied (1)"],
+        title="Satisfaction Distribution"
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# Key Insights
-st.markdown("---")
-st.header("💡 Key Insights")
-
-satisfied_pct = (df['TARGET'] == 0).mean() * 100
-dissatisfied_pct = (df['TARGET'] == 1).mean() * 100
-imbalance_ratio = satisfied / dissatisfied
-
-st.markdown(f"""
-- **Class Distribution**: {satisfied_pct:.1f}% satisfied vs {dissatisfied_pct:.1f}% dissatisfied
-- **Imbalance Ratio**: {imbalance_ratio:.1f}:1 (highly imbalanced dataset)
-- **Total Features**: {len(df.columns) - 1} predictive features
-- **Missing Values**: {df.isnull().sum().sum()} ({(df.isnull().sum().sum() / (df.shape[0] * df.shape[1]) * 100):.2f}%)
-""")
-
-# Correlation Analysis
-st.markdown("---")
+# ----------------------------------------------------------
+# CORRELATIONS
+# ----------------------------------------------------------
 st.header("🔗 Top Correlated Features")
+st.markdown("---")
 
-with st.spinner("Calculating correlations..."):
-    correlations = df.corr()['TARGET'].drop('TARGET').sort_values(ascending=False)
-    
+correlations = df.corr(numeric_only=True)['TARGET'].drop('TARGET')
+correlations_sorted = correlations.sort_values(ascending=False)
+
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("📈 Top 10 Positive Correlations")
-    top_positive = correlations.head(10)
-    
-    fig = go.Figure(data=[
-        go.Bar(
-            y=top_positive.index,
-            x=top_positive.values,
-            orientation='h',
-            marker_color='#2ca02c'
-        )
-    ])
-    fig.update_layout(
-        xaxis_title='Correlation with Dissatisfaction',
-        height=400,
-        yaxis={'categoryorder': 'total ascending'}
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    top_pos = correlations_sorted.head(10)
+    st.bar_chart(top_pos)
 
 with col2:
     st.subheader("📉 Top 10 Negative Correlations")
-    top_negative = correlations.tail(10)
-    
-    fig = go.Figure(data=[
-        go.Bar(
-            y=top_negative.index,
-            x=top_negative.values,
-            orientation='h',
-            marker_color='#d62728'
-        )
-    ])
-    fig.update_layout(
-        xaxis_title='Correlation with Dissatisfaction',
-        height=400,
-        yaxis={'categoryorder': 'total descending'}
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    top_neg = correlations_sorted.tail(10)
+    st.bar_chart(top_neg)
 
-# Feature Statistics
-st.markdown("---")
-st.header("📊 Feature Statistics")
-
-# Show correlation table
-st.subheader("Top 20 Features by Absolute Correlation")
-top_20_abs = correlations.abs().sort_values(ascending=False).head(20)
-
-df_display = pd.DataFrame({
-    'Feature': top_20_abs.index,
-    'Correlation': [correlations[f] for f in top_20_abs.index],
-    'Abs Correlation': top_20_abs.values,
-    'Direction': ['↑ Risk Factor' if correlations[f] > 0 else '↓ Protective Factor' 
-                  for f in top_20_abs.index]
-})
-
-st.dataframe(
-    df_display.style.format({
-        'Correlation': '{:+.4f}',
-        'Abs Correlation': '{:.4f}'
-    }),
-    use_container_width=True,
-    height=400
-)
-
-# Data Preview
-st.markdown("---")
+# ----------------------------------------------------------
+# DATA PREVIEW
+# ----------------------------------------------------------
 st.header("👀 Data Preview")
+st.markdown("---")
 
 st.subheader("First 10 Rows")
 st.dataframe(df.head(10), use_container_width=True)
@@ -208,19 +145,17 @@ st.subheader("Dataset Info")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Rows", f"{df.shape[0]:,}")
-    
+    st.metric("Rows", df.shape[0])
 with col2:
-    st.metric("Columns", f"{df.shape[1]:,}")
-    
+    st.metric("Columns", df.shape[1])
 with col3:
-    st.metric("Memory Usage", f"{df.memory_usage(deep=True).sum() / 1024**2:.1f} MB")
+    st.metric("Memory Usage (MB)", f"{df.memory_usage(deep=True).sum() / 1024**2:.2f}")
 
-# Footer
+# ----------------------------------------------------------
+# FOOTER
+# ----------------------------------------------------------
 st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: gray;'>
-    <p>Santander Customer Satisfaction Dashboard v1.0</p>
-    <p>Built with Streamlit 🎈</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align:center; color:gray;'>Santander Dashboard v1.0 — Streamlit</div>",
+    unsafe_allow_html=True
+)
